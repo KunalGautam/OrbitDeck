@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build --workspace=@orbitdeck/shared && npm run typecheck --workspaces --if-present",
     "prepare": "husky"
   },
   "devDependencies": {
