@@ -28,8 +28,8 @@ export const SatelliteTable: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const groups: { id: SatelliteGroup | 'all' | 'favorites'; label: string }[] = [
-    { id: 'all', label: 'All' },
     { id: 'favorites', label: 'Favorites' },
+    { id: 'all', label: 'All' },
     { id: 'stations', label: 'Space Stations' },
     { id: 'amateur', label: 'Amateur Radio' },
     { id: 'weather', label: 'Weather' },

@@ -104,7 +104,9 @@ export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [selectedSatId, setSelectedSatId] = useState<number | null>(25544); // ISS default
   const [followedSatId, setFollowedSatId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState<SatelliteGroup | 'all' | 'favorites'>('all');
+  const [selectedGroup, setSelectedGroup] = useState<SatelliteGroup | 'all' | 'favorites'>(
+    'favorites',
+  );
   const [onlyInView, setOnlyInView] = useState(false);
   const [isRefreshingTLE, setIsRefreshingTLE] = useState(false);
   const [tleProgress, setTLEProgress] = useState<api.TLEProgress | null>(null);
@@ -436,7 +438,11 @@ export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const selectedSatellite = satellites.find((s) => s.noradId === selectedSatId) || null;
+  const selectedSatellite =
+    satellites.find((s) => s.noradId === selectedSatId) ||
+    satellites.find((s) => s.isFavorite) ||
+    satellites[0] ||
+    null;
   const selectedFrame = selectedSatId ? frames.get(selectedSatId) || null : null;
 
   return (
