@@ -226,4 +226,17 @@ describe('Express REST API Endpoints', () => {
     expect(progRes.body.stage).toBeDefined();
     expect(typeof progRes.body.percent).toBe('number');
   });
+
+  it('Tile API: enforces coordinate validation and security headers', async () => {
+    // Referrer policy header test
+    const healthRes = await request(app).get('/api/health');
+    expect(healthRes.headers['referrer-policy']).toBe('no-referrer-when-downgrade');
+
+    // Invalid tile coordinates
+    const invalidRes = await request(app).get('/api/tiles/osm/invalid/0/0.png');
+    expect(invalidRes.status).toBe(400);
+
+    const outOfBoundsRes = await request(app).get('/api/tiles/osm/25/0/0.png');
+    expect(outOfBoundsRes.status).toBe(400);
+  });
 });

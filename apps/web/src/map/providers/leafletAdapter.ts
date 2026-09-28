@@ -70,11 +70,10 @@ export class LeafletAdapter implements IMapProvider {
     const isOsm =
       !options.tileSource ||
       options.tileSource.id === 'osm-standard' ||
-      options.tileSource.url.includes('tile.openstreetmap.org');
+      options.tileSource.url.includes('tile.openstreetmap.org') ||
+      options.tileSource.url.includes('/api/tiles/osm');
 
-    const tileUrl = isOsm
-      ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-      : options.tileSource?.url || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileUrl = options.tileSource?.url || '/api/tiles/osm/{z}/{x}/{y}.png';
 
     const attribution = isOsm
       ? '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
@@ -87,6 +86,7 @@ export class LeafletAdapter implements IMapProvider {
       subdomains: isOsm ? [] : options.tileSource?.subdomains || [],
       updateWhenIdle: true,
       updateWhenZooming: false,
+      referrerPolicy: 'no-referrer-when-downgrade',
     });
     tileLayer.addTo(this.map);
 

@@ -12,6 +12,7 @@ import { createRadioRouter } from './routes/radioRoutes.js';
 import { createSatelliteRouter } from './routes/satelliteRoutes.js';
 import { createSettingsRouter } from './routes/settingsRoutes.js';
 import { createStationRouter } from './routes/stationRoutes.js';
+import { createTileRouter } from './routes/tileRoutes.js';
 import { createTLERouter } from './routes/tleRoutes.js';
 import { createTrackingRouter } from './routes/trackingRoutes.js';
 import type { HamlibService } from './services/hamlibService.js';
@@ -36,7 +37,12 @@ export interface AppDependencies {
 export function createApp(deps: AppDependencies): Express {
   const app = express();
 
-  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      referrerPolicy: { policy: 'no-referrer-when-downgrade' },
+    }),
+  );
   app.use(cors());
   app.use(express.json());
 
@@ -85,6 +91,7 @@ export function createApp(deps: AppDependencies): Express {
   );
   app.use('/api/hamlib', createHamlibRouter(deps.hamlibService));
   app.use('/api/settings', createSettingsRouter(deps.settingsRepo));
+  app.use('/api/tiles', createTileRouter());
 
   // Static web client serving in production
   const candidatePaths = [

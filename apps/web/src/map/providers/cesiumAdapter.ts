@@ -56,11 +56,28 @@ export class CesiumAdapter implements IMapProvider {
     const isOsm =
       !options.tileSource ||
       options.tileSource.id === 'osm-standard' ||
-      options.tileSource.url.includes('tile.openstreetmap.org');
+      options.tileSource.url.includes('tile.openstreetmap.org') ||
+      options.tileSource.url.includes('/api/tiles/osm');
 
     let imageryProvider: Cesium.ImageryProvider;
+    const tileUrl = options.tileSource?.url || '/api/tiles/osm/{z}/{x}/{y}.png';
 
-    if (isOsm) {
+    if (tileUrl.includes('/api/tiles/osm') || tileUrl.includes('{z}')) {
+      const hasSubdomains =
+        tileUrl.includes('{s}') &&
+        Boolean(options.tileSource?.subdomains && options.tileSource.subdomains.length > 0);
+
+      imageryProvider = new Cesium.UrlTemplateImageryProvider({
+        url: tileUrl,
+        subdomains: hasSubdomains ? options.tileSource?.subdomains : undefined,
+        credit: new Cesium.Credit(
+          options.tileSource?.attribution ||
+            '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+          true,
+        ),
+        maximumLevel: options.tileSource?.maxZoom || 19,
+      });
+    } else if (isOsm) {
       imageryProvider = new Cesium.OpenStreetMapImageryProvider({
         url: 'https://tile.openstreetmap.org/',
         credit: new Cesium.Credit(

@@ -4,9 +4,9 @@ export const DEFAULT_TILE_SOURCES: MapTileSource[] = [
   {
     id: 'osm-standard',
     name: 'OpenStreetMap Standard (Free)',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    url: '/api/tiles/osm/{z}/{x}/{y}.png',
     attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
     maxZoom: 19,
     subdomains: [],
   },
