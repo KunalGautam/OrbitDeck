@@ -1,29 +1,73 @@
-import type { Satellite, SatelliteGroup } from '@orbitdeck/shared';
+import type { Satellite, SatelliteGroup, TLESource } from '@orbitdeck/shared';
 import cron, { type ScheduledTask } from 'node-cron';
 import type { ISatelliteRepository } from '../db/repositories/satelliteRepository.js';
 import type { ISettingsRepository } from '../db/repositories/settingsRepository.js';
 import { DEFAULT_SATELLITES } from './tleFallbackData.js';
 
 export interface TLESourceConfig {
+  id: string;
+  name: string;
   group: SatelliteGroup;
   url: string;
 }
 
+export interface TLEProgress {
+  isRefreshing: boolean;
+  percent: number;
+  message: string;
+  stage: 'idle' | 'downloading' | 'parsing' | 'saving' | 'complete' | 'error';
+  totalSources: number;
+  currentSourceIndex: number;
+  currentSourceName?: string;
+  updatedCount?: number;
+}
+
 export const CELESTRAK_SOURCES: TLESourceConfig[] = [
   {
+    id: 'celestrak-stations',
+    name: 'Space Stations (ISS, Tiangong)',
     group: 'stations',
     url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',
   },
-  { group: 'amateur', url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=amateur&FORMAT=tle' },
-  { group: 'weather', url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle' },
-  { group: 'gnss', url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=gnss&FORMAT=tle' },
-  { group: 'cubesat', url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=cubesat&FORMAT=tle' },
+  {
+    id: 'celestrak-amateur',
+    name: 'Amateur Radio Satellites (AO, SO, FO, etc.)',
+    group: 'amateur',
+    url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=amateur&FORMAT=tle',
+  },
+  {
+    id: 'celestrak-weather',
+    name: 'Weather Satellites (NOAA, Meteor)',
+    group: 'weather',
+    url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle',
+  },
+  {
+    id: 'celestrak-gnss',
+    name: 'GNSS Constellations (GPS, Galileo, Glonass)',
+    group: 'gnss',
+    url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=gnss&FORMAT=tle',
+  },
+  {
+    id: 'celestrak-cubesat',
+    name: 'CubeSats (Active University & Research)',
+    group: 'cubesat',
+    url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=cubesat&FORMAT=tle',
+  },
 ];
 
 export class TLEService {
   private cronJob: ScheduledTask | null = null;
   private lastRefreshTime: string | null = null;
   private isRefreshing: boolean = false;
+  private currentProgress: TLEProgress = {
+    isRefreshing: false,
+    percent: 0,
+    message: 'Idle',
+    stage: 'idle',
+    totalSources: 0,
+    currentSourceIndex: 0,
+  };
+  private progressListeners: ((progress: TLEProgress) => void)[] = [];
 
   constructor(
     private readonly satRepo: ISatelliteRepository,
@@ -47,6 +91,78 @@ export class TLEService {
     }
 
     this.startScheduledRefresh();
+  }
+
+  addProgressListener(listener: (progress: TLEProgress) => void): () => void {
+    this.progressListeners.push(listener);
+    return () => {
+      this.progressListeners = this.progressListeners.filter((l) => l !== listener);
+    };
+  }
+
+  private notifyProgress(p: TLEProgress): void {
+    this.currentProgress = p;
+    for (const listener of this.progressListeners) {
+      try {
+        listener(p);
+      } catch (err) {
+        console.error('Error in TLE progress listener:', err);
+      }
+    }
+  }
+
+  getProgress(): TLEProgress {
+    return this.currentProgress;
+  }
+
+  /**
+   * Returns all TLE sources (built-in Celestrak + custom added sources).
+   */
+  async getSources(): Promise<TLESource[]> {
+    const custom = (await this.settingsRepo.get<TLESource[]>('tle.custom_sources')) || [];
+    const defaults: TLESource[] = CELESTRAK_SOURCES.map((s) => ({
+      id: s.id,
+      name: s.name,
+      group: s.group,
+      url: s.url,
+      enabled: true,
+      isCustom: false,
+    }));
+    return [...defaults, ...custom];
+  }
+
+  /**
+   * Adds a user-defined custom TLE source.
+   */
+  async addCustomSource(input: {
+    name: string;
+    url: string;
+    group?: SatelliteGroup;
+  }): Promise<TLESource> {
+    const custom = (await this.settingsRepo.get<TLESource[]>('tle.custom_sources')) || [];
+    const newSource: TLESource = {
+      id: `custom-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: input.name.trim(),
+      url: input.url.trim(),
+      group: input.group || 'custom',
+      enabled: true,
+      isCustom: true,
+      createdAt: new Date().toISOString(),
+    };
+    custom.push(newSource);
+    await this.settingsRepo.set('tle.custom_sources', custom);
+    return newSource;
+  }
+
+  /**
+   * Removes a user-defined custom TLE source.
+   */
+  async removeCustomSource(id: string): Promise<boolean> {
+    const custom = (await this.settingsRepo.get<TLESource[]>('tle.custom_sources')) || [];
+    const filtered = custom.filter((s) => s.id !== id);
+    if (filtered.length === custom.length) return false;
+    await this.settingsRepo.set('tle.custom_sources', filtered);
+    return true;
   }
 
   /**
@@ -154,7 +270,7 @@ export class TLEService {
   }
 
   /**
-   * Refreshes TLE data from CelesTrak (with fallback to default catalogue if offline).
+   * Refreshes TLE data from all enabled sources with granular progress updates.
    */
   async refreshAll(): Promise<{ updated: number; failedGroups: string[] }> {
     if (this.isRefreshing) {
@@ -162,14 +278,38 @@ export class TLEService {
     }
 
     this.isRefreshing = true;
+    const allSources = await this.getSources();
+    const enabledSources = allSources.filter((s) => s.enabled !== false);
     const failedGroups: string[] = [];
     const aggregatedSats = new Map<number, Satellite>();
 
+    this.notifyProgress({
+      isRefreshing: true,
+      percent: 5,
+      message: 'Connecting to TLE sources...',
+      stage: 'downloading',
+      totalSources: enabledSources.length,
+      currentSourceIndex: 0,
+    });
+
     try {
-      for (const source of CELESTRAK_SOURCES) {
+      for (let i = 0; i < enabledSources.length; i++) {
+        const source = enabledSources[i]!;
+        const currentPercent = Math.round(5 + (i / enabledSources.length) * 80);
+
+        this.notifyProgress({
+          isRefreshing: true,
+          percent: currentPercent,
+          message: `Downloading ${source.name} (${i + 1}/${enabledSources.length})...`,
+          stage: 'downloading',
+          totalSources: enabledSources.length,
+          currentSourceIndex: i + 1,
+          currentSourceName: source.name,
+        });
+
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          const timeoutId = setTimeout(() => controller.abort(), 12000);
 
           const response = await fetch(source.url, {
             headers: { 'User-Agent': 'OrbitDeck/1.0 (Satellite Tracking; Gpredict inspired)' },
@@ -195,10 +335,20 @@ export class TLEService {
               aggregatedSats.set(sat.noradId, sat);
             }
           }
-        } catch {
+        } catch (fetchErr) {
+          console.warn(`Failed to fetch TLE from ${source.name} (${source.url}):`, fetchErr);
           failedGroups.push(source.group);
         }
       }
+
+      this.notifyProgress({
+        isRefreshing: true,
+        percent: 90,
+        message: 'Updating local catalogue database...',
+        stage: 'saving',
+        totalSources: enabledSources.length,
+        currentSourceIndex: enabledSources.length,
+      });
 
       // If all network sources failed, ensure we keep the fallback catalogue
       if (aggregatedSats.size === 0) {
@@ -215,10 +365,30 @@ export class TLEService {
       this.lastRefreshTime = now;
       await this.settingsRepo.set('tle.last_refresh_time', now);
 
+      this.notifyProgress({
+        isRefreshing: false,
+        percent: 100,
+        message: `Successfully updated ${allList.length} satellites`,
+        stage: 'complete',
+        totalSources: enabledSources.length,
+        currentSourceIndex: enabledSources.length,
+        updatedCount: allList.length,
+      });
+
       return {
         updated: allList.length,
         failedGroups,
       };
+    } catch (err: any) {
+      this.notifyProgress({
+        isRefreshing: false,
+        percent: 0,
+        message: `Failed to refresh TLE: ${err.message}`,
+        stage: 'error',
+        totalSources: enabledSources.length,
+        currentSourceIndex: 0,
+      });
+      throw err;
     } finally {
       this.isRefreshing = false;
     }

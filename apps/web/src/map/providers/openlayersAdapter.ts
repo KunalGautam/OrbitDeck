@@ -23,7 +23,6 @@ import Polygon from 'ol/geom/Polygon';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
 import { fromLonLat, toLonLat } from 'ol/proj';
-import OSM from 'ol/source/OSM';
 import VectorSource from 'ol/source/Vector';
 import XYZ from 'ol/source/XYZ';
 import { Circle as CircleStyle, Fill, Stroke, Style, Text } from 'ol/style';
@@ -57,6 +56,8 @@ export class OpenLayersAdapter implements IMapProvider {
   private followedSatId: number | null = null;
 
   mount(container: HTMLElement, options: MapMountOptions = {}): void {
+    container.innerHTML = '';
+
     const center = options.initialCenter || [20, 0];
     const zoom = options.initialZoom || 2;
 
@@ -67,17 +68,23 @@ export class OpenLayersAdapter implements IMapProvider {
       maxZoom: 19,
     });
 
-    const tileSource = options.tileSource?.url
-      ? new XYZ({
-          url: options.tileSource.url,
-          attributions: options.tileSource.attribution,
-          maxZoom: options.tileSource.maxZoom || 19,
-        })
-      : new OSM({
-          attributions:
-            options.tileSource?.attribution ||
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        });
+    const rawUrl =
+      options.tileSource?.url || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+    const subdomains =
+      options.tileSource?.subdomains && options.tileSource.subdomains.length > 0
+        ? options.tileSource.subdomains
+        : ['a', 'b', 'c', 'd'];
+    const urls = rawUrl.includes('{s}')
+      ? subdomains.map((s) => rawUrl.replace('{s}', s))
+      : [rawUrl];
+
+    const tileSource = new XYZ({
+      urls,
+      attributions:
+        options.tileSource?.attribution ||
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      maxZoom: options.tileSource?.maxZoom || 19,
+    });
 
     this.map = new OlMap({
       target: container,

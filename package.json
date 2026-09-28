@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "description": "OrbitDeck - Web-based satellite tracking and pass-prediction utility",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KunalGautam/OrbitDeck.git"
+  },
+  "homepage": "https://github.com/KunalGautam/OrbitDeck#readme",
+  "bugs": {
+    "url": "https://github.com/KunalGautam/OrbitDeck/issues"
+  },
   "workspaces": [
     "packages/*",
     "apps/*"

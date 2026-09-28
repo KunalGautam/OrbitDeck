@@ -39,6 +39,38 @@ export async function seedDatabase(db: Kysely<Database>): Promise<void> {
     });
   }
 
+  // Always ensure protected hard-coded locations exist (cannot be deleted)
+  const currentStations = await stationRepo.findAll();
+  const hasKunal = currentStations.some(
+    (s) => s.maidenhead?.toUpperCase() === 'MK68XO' || s.name === "Kunal's Home",
+  );
+  if (!hasKunal) {
+    await stationRepo.create({
+      name: "Kunal's Home",
+      latitude: 18.604167,
+      longitude: 73.958333,
+      altitude: 560,
+      maidenhead: 'MK68XO',
+      isDefault: false,
+      isProtected: true,
+    });
+  }
+
+  const hasMartin = currentStations.some(
+    (s) => s.maidenhead?.toUpperCase() === 'IO93PL' || s.name === "Martin's Home",
+  );
+  if (!hasMartin) {
+    await stationRepo.create({
+      name: "Martin's Home",
+      latitude: 53.479167,
+      longitude: -0.708333,
+      altitude: 30,
+      maidenhead: 'IO93PL',
+      isDefault: false,
+      isProtected: true,
+    });
+  }
+
   // Seed default settings if not present
   const defaultProvider = await settingsRepo.get('map.default_provider');
   if (!defaultProvider) {

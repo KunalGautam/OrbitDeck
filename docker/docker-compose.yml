@@ -6,6 +6,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    image: ghcr.io/kunalgautam/orbitdeck:latest
     container_name: orbitdeck
     restart: unless-stopped
     ports:

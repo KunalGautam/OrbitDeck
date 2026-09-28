@@ -100,8 +100,14 @@ describe('Express REST API Endpoints', () => {
   it('GET /api/stations should return seeded ground stations', async () => {
     const res = await request(app).get('/api/stations');
     expect(res.status).toBe(200);
-    expect(res.body.stations.length).toBe(3);
+    expect(res.body.stations.length).toBe(5);
     expect(res.body.stations[0].isDefault).toBe(true);
+    expect(res.body.stations.some((s: any) => s.maidenhead === 'MK68XO' && s.isProtected)).toBe(
+      true,
+    );
+    expect(res.body.stations.some((s: any) => s.maidenhead === 'IO93PL' && s.isProtected)).toBe(
+      true,
+    );
   });
 
   it('GET /api/stations/convert/coords-to-maidenhead should convert coordinates', async () => {
@@ -185,5 +191,39 @@ describe('Express REST API Endpoints', () => {
       .send({ type: 'SET_SPEED', payload: 5 });
     expect(actRes.status).toBe(200);
     expect(actRes.body.speedMultiplier).toBe(5);
+  });
+
+  it('DELETE /api/stations/:id should reject deleting protected stations with 403', async () => {
+    const stations = await stationRepo.findAll();
+    const protectedStation = stations.find((s) => s.maidenhead === 'MK68XO' || s.isProtected);
+    expect(protectedStation).toBeDefined();
+
+    const res = await request(app).delete(`/api/stations/${protectedStation!.id}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain('protected and cannot be deleted');
+  });
+
+  it('TLE API: GET /api/tle/sources, POST /api/tle/sources, and GET /api/tle/progress', async () => {
+    // Check initial sources
+    const sourcesRes = await request(app).get('/api/tle/sources');
+    expect(sourcesRes.status).toBe(200);
+    expect(Array.isArray(sourcesRes.body.sources)).toBe(true);
+    expect(sourcesRes.body.sources.length).toBeGreaterThan(0);
+
+    // Add custom TLE source
+    const addRes = await request(app).post('/api/tle/sources').send({
+      name: 'Test Custom TLE',
+      url: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle',
+      group: 'weather',
+    });
+    expect(addRes.status).toBe(201);
+    expect(addRes.body.name).toBe('Test Custom TLE');
+    expect(addRes.body.isCustom).toBe(true);
+
+    // Check progress endpoint
+    const progRes = await request(app).get('/api/tle/progress');
+    expect(progRes.status).toBe(200);
+    expect(progRes.body.stage).toBeDefined();
+    expect(typeof progRes.body.percent).toBe('number');
   });
 });

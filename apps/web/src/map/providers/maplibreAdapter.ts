@@ -40,25 +40,44 @@ export class MapLibreAdapter implements IMapProvider {
   private isLoaded = false;
 
   mount(container: HTMLElement, options: MapMountOptions = {}): void {
+    container.innerHTML = '';
+
     const center = options.initialCenter || [20, 0];
     const zoom = options.initialZoom || 1.5;
 
-    const tileUrl = options.tileSource?.url || 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const rawUrl =
+      options.tileSource?.url || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+    const subdomains =
+      options.tileSource?.subdomains && options.tileSource.subdomains.length > 0
+        ? options.tileSource.subdomains
+        : ['a', 'b', 'c', 'd'];
 
-    // Standard raster tile style spec for MapLibre
+    // MapLibre raster tiles require an array of resolved URLs without unexpanded {s}
+    const tiles = rawUrl.includes('{s}')
+      ? subdomains.map((s) => rawUrl.replace('{s}', s))
+      : [rawUrl];
+
+    // Standard raster tile style spec for MapLibre with background color fallback
     const style: any = {
       version: 8,
       sources: {
         'osm-tiles': {
           type: 'raster',
-          tiles: [tileUrl],
+          tiles,
           tileSize: 256,
           attribution:
             options.tileSource?.attribution ||
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
         },
       },
       layers: [
+        {
+          id: 'background-layer',
+          type: 'background',
+          paint: {
+            'background-color': '#080c16',
+          },
+        },
         {
           id: 'osm-tiles-layer',
           type: 'raster',
@@ -80,6 +99,11 @@ export class MapLibreAdapter implements IMapProvider {
     this.map.on('load', () => {
       this.isLoaded = true;
       this.setupVectorLayers();
+      this.map?.resize();
+    });
+
+    this.map.on('error', (e) => {
+      console.warn('MapLibre GL warning:', e);
     });
 
     this.map.on('click', (e) => {
@@ -153,13 +177,25 @@ export class MapLibreAdapter implements IMapProvider {
   }
 
   destroy(): void {
+    for (const marker of this.satMarkers.values()) {
+      marker.remove();
+    }
+    this.satMarkers.clear();
+
+    for (const m of this.celestialMarkers) {
+      m.remove();
+    }
+    this.celestialMarkers = [];
+
+    if (this.stationMarker) {
+      this.stationMarker.remove();
+      this.stationMarker = null;
+    }
+
     if (this.map) {
       this.map.remove();
       this.map = null;
     }
-    this.satMarkers.clear();
-    this.celestialMarkers = [];
-    this.stationMarker = null;
     this.isLoaded = false;
   }
 

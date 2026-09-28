@@ -34,8 +34,10 @@ describe('Database Layer & Repositories', () => {
     it('should run migrations without error and seed initial stations', async () => {
       await seedDatabase(db);
       const stations = await stationRepo.findAll();
-      expect(stations.length).toBe(3);
+      expect(stations.length).toBe(5);
       expect(stations[0]!.isDefault).toBe(true);
+      expect(stations.some((s) => s.maidenhead === 'MK68XO' && s.isProtected)).toBe(true);
+      expect(stations.some((s) => s.maidenhead === 'IO93PL' && s.isProtected)).toBe(true);
 
       const defaultProvider = await settingsRepo.get('map.default_provider');
       expect(defaultProvider).toBe('leaflet');

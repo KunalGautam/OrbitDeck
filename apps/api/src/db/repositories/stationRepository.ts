@@ -22,6 +22,11 @@ export class GroundStationRepository implements IGroundStationRepository {
   constructor(private readonly db: Kysely<Database>) {}
 
   private mapToDomain(row: GroundStationTable): GroundStation {
+    const isProtected =
+      row.is_protected === 1 ||
+      row.maidenhead?.toUpperCase() === 'MK68XO' ||
+      row.maidenhead?.toUpperCase() === 'IO93PL';
+
     return {
       id: row.id,
       name: row.name,
@@ -30,6 +35,7 @@ export class GroundStationRepository implements IGroundStationRepository {
       altitude: row.altitude,
       maidenhead: row.maidenhead,
       isDefault: row.is_default === 1,
+      isProtected,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -92,6 +98,11 @@ export class GroundStationRepository implements IGroundStationRepository {
       await this.db.updateTable('ground_stations').set({ is_default: 0 }).execute();
     }
 
+    const isProtected =
+      Boolean(input.isProtected) ||
+      maidenhead.toUpperCase() === 'MK68XO' ||
+      maidenhead.toUpperCase() === 'IO93PL';
+
     const row: GroundStationTable = {
       id,
       name: input.name,
@@ -100,6 +111,7 @@ export class GroundStationRepository implements IGroundStationRepository {
       altitude: input.altitude ?? 0,
       maidenhead,
       is_default: shouldBeDefault ? 1 : 0,
+      is_protected: isProtected ? 1 : 0,
       created_at: now,
       updated_at: now,
     };
@@ -142,6 +154,14 @@ export class GroundStationRepository implements IGroundStationRepository {
   async delete(id: string): Promise<boolean> {
     const target = await this.findById(id);
     if (!target) return false;
+
+    if (
+      target.isProtected ||
+      target.maidenhead?.toUpperCase() === 'MK68XO' ||
+      target.maidenhead?.toUpperCase() === 'IO93PL'
+    ) {
+      throw new Error('This ground station is protected and cannot be deleted.');
+    }
 
     await this.db.deleteFrom('ground_stations').where('id', '=', id).executeTakeFirst();
 

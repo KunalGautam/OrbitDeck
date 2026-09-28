@@ -1,10 +1,12 @@
 import { type Kysely, type Migration, type MigrationProvider, Migrator } from 'kysely';
 import * as initialSchema from './001_initial_schema.js';
+import * as protectedStationsSchema from './002_add_protected_stations.js';
 
 class InMemoryMigrationProvider implements MigrationProvider {
   async getMigrations(): Promise<Record<string, Migration>> {
     return {
       '001_initial_schema': initialSchema,
+      '002_add_protected_stations': protectedStationsSchema,
     };
   }
 }

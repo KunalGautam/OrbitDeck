@@ -48,6 +48,8 @@ export class LeafletAdapter implements IMapProvider {
   private followedSatId: number | null = null;
 
   mount(container: HTMLElement, options: MapMountOptions = {}): void {
+    container.innerHTML = '';
+
     const center = options.initialCenter || [20, 0];
     const zoom = options.initialZoom || 2;
 
@@ -64,15 +66,16 @@ export class LeafletAdapter implements IMapProvider {
     // Add Zoom control to bottom-right
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
-    const tileUrl = options.tileSource?.url || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileUrl =
+      options.tileSource?.url || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
     const attribution =
       options.tileSource?.attribution ||
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
     const tileLayer = L.tileLayer(tileUrl, {
       attribution,
       maxZoom: options.tileSource?.maxZoom || 19,
-      subdomains: options.tileSource?.subdomains || ['a', 'b', 'c'],
+      subdomains: options.tileSource?.subdomains || ['a', 'b', 'c', 'd'],
     });
     tileLayer.addTo(this.map);
 

@@ -45,9 +45,66 @@ export async function toggleFavorite(noradId: number, isFavorite: boolean): Prom
   if (!res.ok) throw new Error('Failed to toggle favorite');
 }
 
+export interface TLESource {
+  id: string;
+  name: string;
+  url: string;
+  group?: string;
+  isCustom?: boolean;
+}
+
+export interface TLEProgress {
+  isRefreshing: boolean;
+  percent: number;
+  message: string;
+  stage: 'idle' | 'downloading' | 'parsing' | 'storing' | 'completed' | 'failed';
+  currentSource?: string;
+  completedSources?: number;
+  totalSources?: number;
+  updatedSatellites?: number;
+  error?: string;
+}
+
 export async function refreshTLE(): Promise<{ updated: number; message: string }> {
   const res = await fetch(`${API_BASE}/tle/refresh`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to refresh TLE data');
+  return res.json();
+}
+
+export async function fetchTLESources(): Promise<{ sources: TLESource[] }> {
+  const res = await fetch(`${API_BASE}/tle/sources`);
+  if (!res.ok) throw new Error('Failed to fetch TLE sources');
+  return res.json();
+}
+
+export async function addCustomTLESource(source: {
+  name: string;
+  url: string;
+  group?: string;
+}): Promise<TLESource> {
+  const res = await fetch(`${API_BASE}/tle/sources`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(source),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to add TLE source');
+  }
+  return res.json();
+}
+
+export async function deleteCustomTLESource(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/tle/sources/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || 'Failed to delete TLE source');
+  }
+}
+
+export async function fetchTLEProgress(): Promise<TLEProgress> {
+  const res = await fetch(`${API_BASE}/tle/progress`);
+  if (!res.ok) throw new Error('Failed to fetch TLE progress');
   return res.json();
 }
 

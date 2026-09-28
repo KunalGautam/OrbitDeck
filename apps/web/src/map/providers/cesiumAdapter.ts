@@ -39,16 +39,30 @@ export class CesiumAdapter implements IMapProvider {
   private followedSatId: number | null = null;
 
   mount(container: HTMLElement, options: MapMountOptions = {}): void {
-    // Optional Cesium Ion token or empty string for offline/OSM imagery
+    container.innerHTML = '';
+
+    // Optional Cesium Ion token or empty string for offline/CARTO imagery
     Cesium.Ion.defaultAccessToken = options.cesiumIonToken || '';
 
-    const tileUrl = options.tileSource?.url || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const tileUrl =
+      options.tileSource?.url || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
+    const subdomains =
+      options.tileSource?.subdomains && options.tileSource.subdomains.length > 0
+        ? options.tileSource.subdomains
+        : ['a', 'b', 'c', 'd'];
 
-    // OSM imagery provider without requiring Cesium Ion
+    // CARTO/OSM raster imagery provider without requiring Cesium Ion
     const imageryProvider = new Cesium.UrlTemplateImageryProvider({
       url: tileUrl,
-      credit: options.tileSource?.attribution || 'OpenStreetMap contributors',
-      maximumLevel: 19,
+      subdomains,
+      credit:
+        options.tileSource?.attribution ||
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      maximumLevel: options.tileSource?.maxZoom || 19,
+    });
+
+    imageryProvider.errorEvent.addEventListener((error) => {
+      console.warn('Cesium imagery tile error:', error);
     });
 
     this.viewer = new Cesium.Viewer(container, {
@@ -63,6 +77,11 @@ export class CesiumAdapter implements IMapProvider {
       animation: false,
       navigationHelpButton: false,
       fullscreenButton: false,
+    });
+
+    // Suppress render crashes from corrupted/missing external images
+    this.viewer.scene.renderError.addEventListener((_scene, error) => {
+      console.warn('Cesium render loop recovered from error:', error);
     });
 
     const handler = new Cesium.ScreenSpaceEventHandler(this.viewer.scene.canvas);

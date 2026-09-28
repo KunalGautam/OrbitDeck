@@ -6,6 +6,7 @@ export interface GroundStation {
   altitude: number; // meters above sea level
   maidenhead: string; // Maidenhead grid locator (e.g. FN31pr)
   isDefault?: boolean;
+  isProtected?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

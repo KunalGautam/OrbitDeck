@@ -103,13 +103,26 @@ export function createStationRouter(stationRepo: IGroundStationRepository): Rout
 
   router.delete('/:id', async (req, res) => {
     try {
+      const station = await stationRepo.findById(req.params.id);
+      if (!station) {
+        return res.status(404).json({ error: 'Ground station not found' });
+      }
+      if (
+        station.isProtected ||
+        station.maidenhead?.toUpperCase() === 'MK68XO' ||
+        station.maidenhead?.toUpperCase() === 'IO93PL'
+      ) {
+        return res.status(403).json({ error: 'This location is protected and cannot be deleted.' });
+      }
+
       const deleted = await stationRepo.delete(req.params.id);
       if (!deleted) {
         return res.status(404).json({ error: 'Ground station not found' });
       }
       return res.json({ success: true, id: req.params.id });
     } catch (err: any) {
-      return res.status(500).json({ error: err.message });
+      const isProtectedErr = err.message?.includes('protected');
+      return res.status(isProtectedErr ? 403 : 500).json({ error: err.message });
     }
   });
 

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "copy:cesium": "mkdir -p public/cesium && cp -rn ../../node_modules/cesium/Build/Cesium/Assets public/cesium/ && cp -rn ../../node_modules/cesium/Build/Cesium/Widgets public/cesium/ && cp -rn ../../node_modules/cesium/Build/Cesium/Workers public/cesium/ && cp -rn ../../node_modules/cesium/Build/Cesium/ThirdParty public/cesium/ || true",
+    "build": "npm run copy:cesium && tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

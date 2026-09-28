@@ -9,6 +9,7 @@ export const MapView: React.FC = () => {
   const {
     mapProviderId,
     tileSource,
+    filteredSatellites,
     frames,
     selectedSatId,
     setSelectedSatId,
@@ -17,6 +18,14 @@ export const MapView: React.FC = () => {
     activeStation,
     celestial,
   } = useOrbitDeck();
+
+  const activeNoradIds = React.useMemo(() => {
+    return new Set(filteredSatellites.map((s) => s.noradId));
+  }, [filteredSatellites]);
+
+  const visibleFrames = React.useMemo(() => {
+    return Array.from(frames.values()).filter((f) => activeNoradIds.has(f.noradId));
+  }, [frames, activeNoradIds]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const providerRef = useRef<IMapProvider | null>(null);
@@ -41,9 +50,14 @@ export const MapView: React.FC = () => {
       .then(async (provider) => {
         if (isCancelled || !containerRef.current) return;
         providerRef.current = provider;
+        const cesiumIonToken =
+          typeof localStorage !== 'undefined'
+            ? localStorage.getItem('orbitdeck_cesium_token') || undefined
+            : undefined;
 
         await provider.mount(containerRef.current, {
           tileSource,
+          cesiumIonToken,
           initialCenter: activeStation
             ? [activeStation.latitude, activeStation.longitude]
             : [20, 0],
@@ -62,7 +76,7 @@ export const MapView: React.FC = () => {
         // Initial render passes
         provider.setStation(activeStation);
         provider.setSunMoon(celestial);
-        provider.setSatellites(Array.from(frames.values()));
+        provider.setSatellites(visibleFrames);
         setIsLoadingProvider(false);
       })
       .catch((err) => {
@@ -80,13 +94,12 @@ export const MapView: React.FC = () => {
     };
   }, [mapProviderId, tileSource]);
 
-  // Update Satellites & Follow Mode
+  // Update Satellites & Follow Mode (only listed sats on map from the active tab)
   useEffect(() => {
     if (!providerRef.current) return;
-    const frameList = Array.from(frames.values());
-    providerRef.current.setSatellites(frameList);
+    providerRef.current.setSatellites(visibleFrames);
     providerRef.current.followSatellite(followedSatId);
-  }, [frames, followedSatId]);
+  }, [visibleFrames, followedSatId]);
 
   // Update Ground Station
   useEffect(() => {
@@ -100,7 +113,7 @@ export const MapView: React.FC = () => {
 
   // Update Ground Track and Footprint when selected satellite changes or updates
   useEffect(() => {
-    if (!providerRef.current || !selectedSatId) {
+    if (!providerRef.current || !selectedSatId || !activeNoradIds.has(selectedSatId)) {
       providerRef.current?.clearGroundTrack();
       providerRef.current?.clearFootprint();
       return;

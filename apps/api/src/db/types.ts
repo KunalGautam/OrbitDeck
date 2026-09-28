@@ -21,6 +21,7 @@ export interface GroundStationTable {
   altitude: number;
   maidenhead: string;
   is_default: number; // 0 or 1
+  is_protected?: number; // 0 or 1
   created_at: string;
   updated_at: string;
 }

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const GroundStationSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().optional(),
   name: z.string().min(1, 'Name is required').max(100),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -10,6 +10,7 @@ export const GroundStationSchema = z.object({
     .string()
     .regex(/^[A-Ra-r]{2}[0-9]{2}([A-Xa-x]{2}([0-9]{2})?)?$/, 'Invalid Maidenhead grid locator'),
   isDefault: z.boolean().optional(),
+  isProtected: z.boolean().optional(),
 });
 
 export const CreateGroundStationSchema = GroundStationSchema.omit({ id: true });
@@ -30,7 +31,7 @@ export const SatelliteFilterSchema = z.object({
   query: z.string().optional(),
   group: SatelliteGroupSchema.optional(),
   favoriteOnly: z.coerce.boolean().optional(),
-  limit: z.coerce.number().min(1).max(500).default(50),
+  limit: z.coerce.number().min(0).max(50000).optional(),
   offset: z.coerce.number().min(0).default(0),
 });
 

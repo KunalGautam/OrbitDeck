@@ -73,6 +73,13 @@ export async function bootstrap() {
   });
   wsServer.attach(server);
 
+  tleService.addProgressListener((progress) => {
+    wsServer.broadcastAll({
+      type: 'TLE_PROGRESS',
+      data: progress,
+    });
+  });
+
   server.listen(PORT, HOST, () => {
     console.log(`🚀 OrbitDeck API is listening at http://${HOST}:${PORT}`);
     console.log(`🔌 WebSocket available at ws://${HOST}:${PORT}/ws`);

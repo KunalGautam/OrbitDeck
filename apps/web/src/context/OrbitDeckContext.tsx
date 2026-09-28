@@ -33,8 +33,16 @@ interface OrbitDeckContextType {
   setSearchQuery: (q: string) => void;
   selectedGroup: SatelliteGroup | 'all' | 'favorites';
   setSelectedGroup: (grp: SatelliteGroup | 'all' | 'favorites') => void;
+  filteredSatellites: (Satellite & { isStale: boolean })[];
+  onlyInView: boolean;
+  setOnlyInView: (val: boolean) => void;
   refreshTLEData: () => Promise<void>;
   isRefreshingTLE: boolean;
+  tleProgress: api.TLEProgress | null;
+  tleSources: api.TLESource[];
+  addCustomTLESource: (source: { name: string; url: string; group?: string }) => Promise<void>;
+  removeCustomTLESource: (id: string) => Promise<void>;
+  loadTLESources: () => Promise<void>;
 
   // Stations (QTH)
   stations: GroundStation[];
@@ -72,14 +80,35 @@ interface OrbitDeckContextType {
 
 const OrbitDeckContext = createContext<OrbitDeckContextType | null>(null);
 
+const TLE_CACHE_KEY = 'orbitdeck_tle_satellites_v1';
+
 export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Satellites
-  const [satellites, setSatellites] = useState<(Satellite & { isStale: boolean })[]>([]);
+  // Satellites with Browser Storage (localStorage) persistence
+  const [satellites, setSatellites] = useState<(Satellite & { isStale: boolean })[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem(TLE_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to parse cached satellites from localStorage:', err);
+      }
+    }
+    return [];
+  });
+
   const [selectedSatId, setSelectedSatId] = useState<number | null>(25544); // ISS default
   const [followedSatId, setFollowedSatId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<SatelliteGroup | 'all' | 'favorites'>('all');
+  const [onlyInView, setOnlyInView] = useState(false);
   const [isRefreshingTLE, setIsRefreshingTLE] = useState(false);
+  const [tleProgress, setTLEProgress] = useState<api.TLEProgress | null>(null);
+  const [tleSources, setTLESources] = useState<api.TLESource[]>([]);
 
   // Stations
   const [stations, setStations] = useState<GroundStation[]>([]);
@@ -89,6 +118,36 @@ export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [frames, setFrames] = useState<Map<number, LiveTrackingFrame>>(new Map());
   const [celestial, setCelestial] = useState<CelestialPosition[]>([]);
   const [connected, setConnected] = useState(false);
+
+  // Filtered satellites based on active tab, search, and in-view filter
+  const filteredSatellites = React.useMemo(() => {
+    return satellites.filter((sat) => {
+      // Group filter (active tab)
+      if (selectedGroup === 'favorites') {
+        if (!sat.isFavorite) return false;
+      } else if (selectedGroup !== 'all') {
+        if (!sat.groups.includes(selectedGroup as SatelliteGroup)) return false;
+      }
+
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = sat.name.toLowerCase().includes(q);
+        const matchId = String(sat.noradId).includes(q);
+        if (!matchName && !matchId) return false;
+      }
+
+      // In view filter
+      if (onlyInView) {
+        const frame = frames.get(sat.noradId);
+        if (!frame || frame.elevationDeg === undefined || frame.elevationDeg <= 0) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [satellites, selectedGroup, searchQuery, onlyInView, frames]);
 
   // Time
   const [timeState, setTimeState] = useState<TimeControlState>({
@@ -118,23 +177,46 @@ export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     saveMapProviderPreference(id);
   }, []);
 
+  // Cache helper for browser storage
+  const updateAndCacheSatellites = useCallback((sats: (Satellite & { isStale: boolean })[]) => {
+    setSatellites(sats);
+    if (typeof window !== 'undefined' && sats.length > 0) {
+      try {
+        localStorage.setItem(TLE_CACHE_KEY, JSON.stringify(sats));
+      } catch (err) {
+        console.warn('Failed to save satellites to localStorage:', err);
+      }
+    }
+  }, []);
+
+  // Load TLE sources
+  const loadTLESources = useCallback(async () => {
+    try {
+      const res = await api.fetchTLESources();
+      setTLESources(res.sources);
+    } catch (err) {
+      console.error('Failed to load TLE sources:', err);
+    }
+  }, []);
+
   // Fetch initial stations and satellites
   const loadInitialData = useCallback(async () => {
     try {
       const [stationList, satResult] = await Promise.all([
         api.fetchStations(),
-        api.fetchSatellites({ limit: 100 }),
+        api.fetchSatellites(),
       ]);
       setStations(stationList);
       if (stationList.length > 0) {
         const def = stationList.find((s) => s.isDefault) || stationList[0]!;
         setActiveStationId(def.id);
       }
-      setSatellites(satResult.satellites);
+      updateAndCacheSatellites(satResult.satellites);
     } catch (err) {
       console.error('Failed to load initial data:', err);
     }
-  }, []);
+    loadTLESources();
+  }, [updateAndCacheSatellites, loadTLESources]);
 
   useEffect(() => {
     loadInitialData();
@@ -178,6 +260,25 @@ export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         } else if (msg.type === 'CONNECTED' || msg.type === 'TIME_STATE_CHANGED') {
           if (msg.timeState) {
             setTimeState(msg.timeState);
+          }
+        } else if (msg.type === 'TLE_PROGRESS' && msg.data) {
+          const prog = msg.data as api.TLEProgress;
+          setTLEProgress(prog);
+          if (prog.isRefreshing) {
+            setIsRefreshingTLE(true);
+          } else {
+            setIsRefreshingTLE(false);
+            if (prog.stage === 'completed') {
+              api
+                .fetchSatellites()
+                .then((res) => {
+                  updateAndCacheSatellites(res.satellites);
+                })
+                .catch(console.error);
+            }
+            setTimeout(() => {
+              setTLEProgress((curr) => (curr?.isRefreshing ? curr : null));
+            }, 5000);
           }
         }
       } catch (err) {
@@ -257,15 +358,50 @@ export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     );
   };
 
+  // Polling fallback while TLE refresh is active
+  useEffect(() => {
+    if (!isRefreshingTLE && (!tleProgress || !tleProgress.isRefreshing)) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const prog = await api.fetchTLEProgress();
+        setTLEProgress(prog);
+        if (!prog.isRefreshing) {
+          setIsRefreshingTLE(false);
+          const res = await api.fetchSatellites();
+          updateAndCacheSatellites(res.satellites);
+          setTimeout(() => {
+            setTLEProgress((curr) => (curr?.isRefreshing ? curr : null));
+          }, 5000);
+        }
+      } catch (err) {
+        console.error('Error polling TLE progress:', err);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isRefreshingTLE, tleProgress?.isRefreshing, updateAndCacheSatellites]);
+
   const refreshTLEData = async () => {
     setIsRefreshingTLE(true);
     try {
       await api.refreshTLE();
-      const res = await api.fetchSatellites({ limit: 100 });
-      setSatellites(res.satellites);
-    } finally {
+      const res = await api.fetchSatellites();
+      updateAndCacheSatellites(res.satellites);
+    } catch (err) {
+      console.error('Failed to refresh TLE data:', err);
       setIsRefreshingTLE(false);
     }
+  };
+
+  const addCustomTLESource = async (source: { name: string; url: string; group?: string }) => {
+    await api.addCustomTLESource(source);
+    await loadTLESources();
+  };
+
+  const removeCustomTLESource = async (id: string) => {
+    await api.deleteCustomTLESource(id);
+    await loadTLESources();
   };
 
   const addStation = async (input: CreateGroundStationInput): Promise<GroundStation> => {
@@ -307,6 +443,7 @@ export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     <OrbitDeckContext.Provider
       value={{
         satellites,
+        filteredSatellites,
         selectedSatId,
         selectedSatellite,
         selectedFrame,
@@ -318,8 +455,15 @@ export const OrbitDeckProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setSearchQuery,
         selectedGroup,
         setSelectedGroup,
+        onlyInView,
+        setOnlyInView,
         refreshTLEData,
         isRefreshingTLE,
+        tleProgress,
+        tleSources,
+        addCustomTLESource,
+        removeCustomTLESource,
+        loadTLESources,
         stations,
         activeStation,
         setActiveStationId,

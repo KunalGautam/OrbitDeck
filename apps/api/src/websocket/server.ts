@@ -150,11 +150,10 @@ export class OrbitDeckWebSocketServer {
         }
       }
 
-      // If no explicit subscriptions, track all active satellites (up to 100)
+      // If no explicit subscriptions, track all active satellites
       let satellites: Satellite[] = [];
       if (allSubscribedIds.size === 0) {
-        const result = await this.satRepo.findAll({ limit: 100 });
-        satellites = result.satellites;
+        satellites = await this.satRepo.getAllActive();
       } else {
         const satPromises = Array.from(allSubscribedIds).map((id) => this.satRepo.findById(id));
         const resolved = await Promise.all(satPromises);
@@ -206,7 +205,7 @@ export class OrbitDeckWebSocketServer {
     }, intervalMs);
   }
 
-  private broadcastAll(message: unknown): void {
+  public broadcastAll(message: unknown): void {
     const payload = JSON.stringify(message);
     for (const session of this.clients.values()) {
       if (session.ws.readyState === WebSocket.OPEN) {

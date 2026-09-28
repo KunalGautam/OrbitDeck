@@ -36,4 +36,7 @@ export interface TLESource {
   name: string;
   group: SatelliteGroup;
   url: string;
+  enabled?: boolean;
+  isCustom?: boolean;
+  createdAt?: string;
 }

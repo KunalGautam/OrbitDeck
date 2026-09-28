@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Globe2, Key, Layers, X } from 'lucide-react';
 import { useOrbitDeck } from '../context/OrbitDeckContext.js';
 import { MAP_PROVIDERS } from '../map/providerRegistry.js';
@@ -21,6 +22,7 @@ export const MapSettingsModal: React.FC<MapSettingsModalProps> = ({ isOpen, onCl
   const [tokenSaved, setTokenSaved] = useState(false);
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
   const handleSaveCesiumToken = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,14 +37,16 @@ export const MapSettingsModal: React.FC<MapSettingsModalProps> = ({ isOpen, onCl
     setTimeout(() => setTokenSaved(false), 2000);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-space-850 border border-space-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] select-none">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto select-none">
+      <div className="bg-space-850 border border-space-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] my-auto">
         {/* Modal Header */}
-        <div className="px-5 py-3.5 bg-space-800 border-b border-space-700 flex items-center justify-between">
+        <div className="px-4 sm:px-5 py-3.5 bg-space-800 border-b border-space-700 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Layers className="w-5 h-5 text-orbit-cyan" />
-            <h2 className="text-base font-bold text-slate-100">Map Engine & Layer Settings</h2>
+            <h2 className="text-sm sm:text-base font-bold text-slate-100">
+              Map Engine & Layer Settings
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -53,7 +57,7 @@ export const MapSettingsModal: React.FC<MapSettingsModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 space-y-5 overflow-y-auto flex-1 text-xs">
+        <div className="p-3 sm:p-5 space-y-4 sm:space-y-5 overflow-y-auto flex-1 text-xs">
           {/* Map Engine Selection */}
           <div className="space-y-2">
             <div className="text-slate-400 font-semibold uppercase tracking-wider text-[11px] flex items-center space-x-1.5">
@@ -121,7 +125,7 @@ export const MapSettingsModal: React.FC<MapSettingsModalProps> = ({ isOpen, onCl
                         : 'bg-space-900/60 border-space-700 hover:bg-space-800/50'
                     }`}
                   >
-                    <div>
+                    <div className="min-w-0 pr-2">
                       <div className="font-bold text-slate-200 text-xs">{src.name}</div>
                       <div className="text-[10px] text-slate-500 font-mono truncate max-w-sm mt-0.5">
                         {src.url}
@@ -145,17 +149,20 @@ export const MapSettingsModal: React.FC<MapSettingsModalProps> = ({ isOpen, onCl
               Cesium Ion access token to unlock Bing aerial photorealistic terrain and high-res
               global photogrammetry.
             </p>
-            <form onSubmit={handleSaveCesiumToken} className="flex items-center space-x-2 pt-1">
+            <form
+              onSubmit={handleSaveCesiumToken}
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1"
+            >
               <input
                 type="password"
                 placeholder="eyJhbGciOiJIUzI1NiIsInR..."
                 value={cesiumToken}
                 onChange={(e) => setCesiumToken(e.target.value)}
-                className="flex-1 bg-space-850 border border-space-700 rounded px-2.5 py-1 text-slate-200 font-mono text-[11px] outline-none focus:border-orbit-cyan"
+                className="flex-1 bg-space-850 border border-space-700 rounded px-2.5 py-1.5 text-slate-200 font-mono text-[11px] outline-none focus:border-orbit-cyan"
               />
               <button
                 type="submit"
-                className="px-3 py-1 bg-space-700 hover:bg-space-600 border border-space-600 rounded text-slate-200 font-medium text-xs transition"
+                className="px-4 py-1.5 bg-space-700 hover:bg-space-600 border border-space-600 rounded text-slate-200 font-medium text-xs transition"
               >
                 {tokenSaved ? 'Saved!' : 'Save'}
               </button>
@@ -164,7 +171,7 @@ export const MapSettingsModal: React.FC<MapSettingsModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3 bg-space-800 border-t border-space-700 flex justify-end">
+        <div className="px-4 sm:px-5 py-3 bg-space-800 border-t border-space-700 flex justify-end">
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded bg-space-700 text-slate-200 hover:bg-space-600 transition text-xs font-semibold"
@@ -173,6 +180,7 @@ export const MapSettingsModal: React.FC<MapSettingsModalProps> = ({ isOpen, onCl
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

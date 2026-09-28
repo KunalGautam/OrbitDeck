@@ -9,6 +9,7 @@ type SortOrder = 'asc' | 'desc';
 export const SatelliteTable: React.FC = () => {
   const {
     satellites,
+    filteredSatellites,
     selectedSatId,
     setSelectedSatId,
     followedSatId,
@@ -19,11 +20,12 @@ export const SatelliteTable: React.FC = () => {
     setSearchQuery,
     selectedGroup,
     setSelectedGroup,
+    onlyInView,
+    setOnlyInView,
   } = useOrbitDeck();
 
   const [sortField, setSortField] = useState<SortField>('elevation');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [onlyInView, setOnlyInView] = useState(false);
 
   const groups: { id: SatelliteGroup | 'all' | 'favorites'; label: string }[] = [
     { id: 'all', label: 'All' },
@@ -45,64 +47,37 @@ export const SatelliteTable: React.FC = () => {
   };
 
   const filteredAndSortedSats = useMemo(() => {
-    return satellites
-      .filter((sat) => {
-        // Group filter
-        if (selectedGroup === 'favorites') {
-          if (!sat.isFavorite) return false;
-        } else if (selectedGroup !== 'all') {
-          if (!sat.groups.includes(selectedGroup as SatelliteGroup)) return false;
-        }
+    return [...filteredSatellites].sort((a, b) => {
+      const frameA = frames.get(a.noradId);
+      const frameB = frames.get(b.noradId);
 
-        // Search query
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase().trim();
-          const matchName = sat.name.toLowerCase().includes(q);
-          const matchId = String(sat.noradId).includes(q);
-          if (!matchName && !matchId) return false;
-        }
+      let valA: number | string = 0;
+      let valB: number | string = 0;
 
-        // In view filter (elevation > 0)
-        if (onlyInView) {
-          const frame = frames.get(sat.noradId);
-          if (!frame || frame.elevationDeg === undefined || frame.elevationDeg <= 0) {
-            return false;
-          }
-        }
+      switch (sortField) {
+        case 'name':
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+          break;
+        case 'noradId':
+          valA = a.noradId;
+          valB = b.noradId;
+          break;
+        case 'elevation':
+          valA = frameA?.elevationDeg ?? -999;
+          valB = frameB?.elevationDeg ?? -999;
+          break;
+        case 'altitude':
+          valA = frameA?.altitudeKm ?? 0;
+          valB = frameB?.altitudeKm ?? 0;
+          break;
+      }
 
-        return true;
-      })
-      .sort((a, b) => {
-        const frameA = frames.get(a.noradId);
-        const frameB = frames.get(b.noradId);
-
-        let valA: number | string = 0;
-        let valB: number | string = 0;
-
-        switch (sortField) {
-          case 'name':
-            valA = a.name.toLowerCase();
-            valB = b.name.toLowerCase();
-            break;
-          case 'noradId':
-            valA = a.noradId;
-            valB = b.noradId;
-            break;
-          case 'elevation':
-            valA = frameA?.elevationDeg ?? -999;
-            valB = frameB?.elevationDeg ?? -999;
-            break;
-          case 'altitude':
-            valA = frameA?.altitudeKm ?? 0;
-            valB = frameB?.altitudeKm ?? 0;
-            break;
-        }
-
-        if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
-        if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
-        return 0;
-      });
-  }, [satellites, selectedGroup, searchQuery, onlyInView, frames, sortField, sortOrder]);
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [filteredSatellites, frames, sortField, sortOrder]);
 
   return (
     <div className="h-full bg-space-850 border border-space-700 rounded-lg flex flex-col overflow-hidden select-none">

@@ -130,16 +130,19 @@ export class SatelliteRepository implements ISatelliteRepository {
       .executeTakeFirst();
     const total = Number(countResult?.total ?? 0);
 
-    const limit = filter?.limit ?? 50;
+    const limit = filter?.limit;
     const offset = filter?.offset ?? 0;
 
-    const rows = await query
-      .selectAll()
-      .orderBy('is_favorite', 'desc')
-      .orderBy('name', 'asc')
-      .limit(limit)
-      .offset(offset)
-      .execute();
+    let queryBuilder = query.selectAll().orderBy('is_favorite', 'desc').orderBy('name', 'asc');
+
+    if (limit !== undefined && limit > 0) {
+      queryBuilder = queryBuilder.limit(limit);
+    }
+    if (offset > 0) {
+      queryBuilder = queryBuilder.offset(offset);
+    }
+
+    const rows = await queryBuilder.execute();
 
     return {
       satellites: rows.map((r) => this.mapToDomain(r)),
