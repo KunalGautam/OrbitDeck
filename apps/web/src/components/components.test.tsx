@@ -258,10 +258,10 @@ describe('OrbitDeck Web Component Suite', () => {
     expect(document.body.textContent).toContain('Ground Stations (QTH Locators)');
     expect(document.body.textContent).toContain('Map Engine & Layer Settings');
     expect(document.body.textContent).toContain('Leaflet');
-    expect(document.body.textContent).toContain('OpenLayers');
-    expect(document.body.textContent).toContain('MapLibre GL');
     expect(document.body.textContent).toContain('CesiumJS');
-    expect(document.body.textContent).toContain('Globe.gl');
+    expect(document.body.textContent).not.toContain('OpenLayers');
+    expect(document.body.textContent).not.toContain('MapLibre GL');
+    expect(document.body.textContent).not.toContain('Globe.gl');
 
     root.unmount();
     container.remove();

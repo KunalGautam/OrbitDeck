@@ -7,10 +7,7 @@ import type {
   LiveTrackingFrame,
 } from '@orbitdeck/shared';
 import { LeafletAdapter } from './providers/leafletAdapter.js';
-import { OpenLayersAdapter } from './providers/openlayersAdapter.js';
-import { MapLibreAdapter } from './providers/maplibreAdapter.js';
 import { CesiumAdapter } from './providers/cesiumAdapter.js';
-import { GlobeGlAdapter } from './providers/globeGlAdapter.js';
 
 // Setup Mock Canvas / WebGL for headless DOM test runner
 beforeEach(() => {
@@ -82,10 +79,7 @@ beforeEach(() => {
 
 const ADAPTER_FACTORIES: { name: string; create: () => IMapProvider }[] = [
   { name: 'LeafletAdapter', create: () => new LeafletAdapter() },
-  { name: 'OpenLayersAdapter', create: () => new OpenLayersAdapter() },
-  { name: 'MapLibreAdapter', create: () => new MapLibreAdapter() },
   { name: 'CesiumAdapter', create: () => new CesiumAdapter() },
-  { name: 'GlobeGlAdapter', create: () => new GlobeGlAdapter() },
 ];
 
 describe('MapProvider Conformance Test Suite', () => {

@@ -1,7 +1,7 @@
 import type { GroundStation } from './station.js';
 import type { CelestialPosition, GroundTrackPoint, LiveTrackingFrame } from './tracking.js';
 
-export type MapProviderId = 'leaflet' | 'openlayers' | 'maplibre' | 'cesium' | 'globegl';
+export type MapProviderId = 'leaflet' | 'cesium';
 
 export interface MapCapabilities {
   supports3D: boolean;

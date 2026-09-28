@@ -14,6 +14,11 @@ import {
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
+// Ensure Cesium static assets base URL is defined with trailing slash
+if (typeof window !== 'undefined' && !(window as any).CESIUM_BASE_URL) {
+  (window as any).CESIUM_BASE_URL = '/cesium/';
+}
+
 export class CesiumAdapter implements IMapProvider {
   readonly id: MapProviderId = 'cesium';
   readonly name = 'CesiumJS (3D Globe)';
@@ -41,25 +46,42 @@ export class CesiumAdapter implements IMapProvider {
   mount(container: HTMLElement, options: MapMountOptions = {}): void {
     container.innerHTML = '';
 
-    // Optional Cesium Ion token or empty string for offline/CARTO imagery
+    if (typeof window !== 'undefined' && !(window as any).CESIUM_BASE_URL) {
+      (window as any).CESIUM_BASE_URL = '/cesium/';
+    }
+
+    // Optional Cesium Ion token or empty string for offline/free OSM imagery
     Cesium.Ion.defaultAccessToken = options.cesiumIonToken || '';
 
-    const tileUrl =
-      options.tileSource?.url || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-    const subdomains =
-      options.tileSource?.subdomains && options.tileSource.subdomains.length > 0
-        ? options.tileSource.subdomains
-        : ['a', 'b', 'c', 'd'];
+    const isOsm =
+      !options.tileSource ||
+      options.tileSource.id === 'osm-standard' ||
+      options.tileSource.url.includes('tile.openstreetmap.org');
 
-    // CARTO/OSM raster imagery provider without requiring Cesium Ion
-    const imageryProvider = new Cesium.UrlTemplateImageryProvider({
-      url: tileUrl,
-      subdomains,
-      credit:
-        options.tileSource?.attribution ||
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maximumLevel: options.tileSource?.maxZoom || 19,
-    });
+    let imageryProvider: Cesium.ImageryProvider;
+
+    if (isOsm) {
+      imageryProvider = new Cesium.OpenStreetMapImageryProvider({
+        url: 'https://tile.openstreetmap.org/',
+        credit: new Cesium.Credit(
+          '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+          true,
+        ),
+        maximumLevel: 19,
+      });
+    } else {
+      const tileSource = options.tileSource!;
+      const hasSubdomains =
+        tileSource.url.includes('{s}') &&
+        Boolean(tileSource.subdomains && tileSource.subdomains.length > 0);
+
+      imageryProvider = new Cesium.UrlTemplateImageryProvider({
+        url: tileSource.url,
+        subdomains: hasSubdomains ? tileSource.subdomains : undefined,
+        credit: new Cesium.Credit(tileSource.attribution, true),
+        maximumLevel: tileSource.maxZoom || 19,
+      });
+    }
 
     imageryProvider.errorEvent.addEventListener((error) => {
       console.warn('Cesium imagery tile error:', error);
@@ -77,9 +99,10 @@ export class CesiumAdapter implements IMapProvider {
       animation: false,
       navigationHelpButton: false,
       fullscreenButton: false,
+      showRenderLoopErrors: false,
     });
 
-    // Suppress render crashes from corrupted/missing external images
+    // Suppress render crashes from transient image decode / network errors
     this.viewer.scene.renderError.addEventListener((_scene, error) => {
       console.warn('Cesium render loop recovered from error:', error);
     });

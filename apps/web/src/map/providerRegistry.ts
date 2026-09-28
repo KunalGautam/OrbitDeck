@@ -14,7 +14,7 @@ export const MAP_PROVIDERS: Record<MapProviderId, ProviderMetadata> = {
     id: 'leaflet',
     name: 'Leaflet (2D)',
     type: '2D',
-    description: 'Lightweight, ultra-fast 2D raster map. Default option.',
+    description: 'Lightweight, ultra-fast 2D raster map adhering to OSM tile usage policies.',
     capabilities: {
       supports3D: false,
       supportsVectorTiles: false,
@@ -27,45 +27,11 @@ export const MAP_PROVIDERS: Record<MapProviderId, ProviderMetadata> = {
       return new LeafletAdapter();
     },
   },
-  openlayers: {
-    id: 'openlayers',
-    name: 'OpenLayers (2D)',
-    type: '2D',
-    description: 'Advanced 2D projection and vector features.',
-    capabilities: {
-      supports3D: false,
-      supportsVectorTiles: false,
-      supportsTerrain: false,
-      supportsCustomProjections: true,
-      supportsAtmosphere: false,
-    },
-    loader: async () => {
-      const { OpenLayersAdapter } = await import('./providers/openlayersAdapter.js');
-      return new OpenLayersAdapter();
-    },
-  },
-  maplibre: {
-    id: 'maplibre',
-    name: 'MapLibre GL (2D Vector)',
-    type: '2D',
-    description: 'Hardware accelerated WebGL vector tiles and smooth zoom.',
-    capabilities: {
-      supports3D: false,
-      supportsVectorTiles: true,
-      supportsTerrain: false,
-      supportsCustomProjections: false,
-      supportsAtmosphere: false,
-    },
-    loader: async () => {
-      const { MapLibreAdapter } = await import('./providers/maplibreAdapter.js');
-      return new MapLibreAdapter();
-    },
-  },
   cesium: {
     id: 'cesium',
     name: 'CesiumJS (3D Globe)',
     type: '3D',
-    description: 'Full 3D photorealistic globe with orbital camera and atmosphere.',
+    description: 'Full 3D photorealistic globe with orbital camera and free OpenStreetMap imagery.',
     capabilities: {
       supports3D: true,
       supportsVectorTiles: false,
@@ -78,30 +44,13 @@ export const MAP_PROVIDERS: Record<MapProviderId, ProviderMetadata> = {
       return new CesiumAdapter();
     },
   },
-  globegl: {
-    id: 'globegl',
-    name: 'Globe.gl (3D Globe)',
-    type: '3D',
-    description: 'Lightweight Three.js-based interactive 3D globe.',
-    capabilities: {
-      supports3D: true,
-      supportsVectorTiles: false,
-      supportsTerrain: false,
-      supportsCustomProjections: false,
-      supportsAtmosphere: true,
-    },
-    loader: async () => {
-      const { GlobeGlAdapter } = await import('./providers/globeGlAdapter.js');
-      return new GlobeGlAdapter();
-    },
-  },
 };
 
 const STORAGE_KEY = 'orbitdeck.map_provider';
 
 /**
  * Resolves active map provider from:
- * 1. URL search param ?map=leaflet|openlayers|maplibre|cesium|globegl
+ * 1. URL search param ?map=leaflet|cesium
  * 2. LocalStorage setting
  * 3. Environment default (VITE_DEFAULT_MAP_PROVIDER)
  * 4. Fallback 'leaflet'

@@ -57,7 +57,7 @@ export class LeafletAdapter implements IMapProvider {
       center: center as [number, number],
       zoom,
       minZoom: 1,
-      maxZoom: 18,
+      maxZoom: 19,
       worldCopyJump: true,
       zoomControl: false,
       attributionControl: true,
@@ -66,16 +66,27 @@ export class LeafletAdapter implements IMapProvider {
     // Add Zoom control to bottom-right
     L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
-    const tileUrl =
-      options.tileSource?.url || 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png';
-    const attribution =
-      options.tileSource?.attribution ||
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+    // Strictly adhere to OpenStreetMap Tile Usage Policy (https://operations.osmfoundation.org/policies/tiles/)
+    const isOsm =
+      !options.tileSource ||
+      options.tileSource.id === 'osm-standard' ||
+      options.tileSource.url.includes('tile.openstreetmap.org');
+
+    const tileUrl = isOsm
+      ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+      : options.tileSource?.url || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+    const attribution = isOsm
+      ? '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+      : options.tileSource?.attribution ||
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
 
     const tileLayer = L.tileLayer(tileUrl, {
       attribution,
       maxZoom: options.tileSource?.maxZoom || 19,
-      subdomains: options.tileSource?.subdomains || ['a', 'b', 'c', 'd'],
+      subdomains: isOsm ? [] : options.tileSource?.subdomains || [],
+      updateWhenIdle: true,
+      updateWhenZooming: false,
     });
     tileLayer.addTo(this.map);
 

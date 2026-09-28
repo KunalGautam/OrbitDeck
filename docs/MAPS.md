@@ -4,13 +4,10 @@ OrbitDeck features a modular map provider abstraction layer that enables switchi
 
 ## Supported Providers
 
-| Provider        | Type             | Capabilities                              | Default Imagery                       |
-| --------------- | ---------------- | ----------------------------------------- | ------------------------------------- |
-| **Leaflet**     | 2D Raster        | Lightweight, fast pan/zoom, rock-solid    | OpenStreetMap Standard                |
-| **OpenLayers**  | 2D Raster/Vector | Advanced projections, smooth rendering    | OpenStreetMap Standard                |
-| **MapLibre GL** | 2D Vector        | Hardware-accelerated WebGL vector tiles   | MapLibre demo / OSM raster tiles      |
-| **CesiumJS**    | 3D Globe / 2.5D  | Full 3D globe, orbital camera, atmosphere | OSM imagery (no Ion token required)   |
-| **globe.gl**    | 3D Globe         | Lightweight Three.js-based 3D globe       | Photorealistic NASA Blue Marble / OSM |
+| Provider     | Type            | Capabilities                                  | Default Imagery                    |
+| ------------ | --------------- | --------------------------------------------- | ---------------------------------- |
+| **Leaflet**  | 2D Raster       | Lightweight, fast pan/zoom, strict OSM policy | OpenStreetMap Standard (100% Free) |
+| **CesiumJS** | 3D Globe / 2.5D | Full 3D globe, orbital camera, atmosphere     | OpenStreetMap Standard (100% Free) |
 
 ## Adapter Contract (`IMapProvider`)
 
