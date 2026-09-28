@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
@@ -83,6 +85,27 @@ export function createApp(deps: AppDependencies): Express {
   );
   app.use('/api/hamlib', createHamlibRouter(deps.hamlibService));
   app.use('/api/settings', createSettingsRouter(deps.settingsRepo));
+
+  // Static web client serving in production
+  const candidatePaths = [
+    process.env.WEB_STATIC_PATH,
+    path.resolve(process.cwd(), 'apps/web/dist'),
+    path.resolve(process.cwd(), '../web/dist'),
+    path.resolve(process.cwd(), 'dist'),
+  ].filter(Boolean) as string[];
+
+  for (const staticDir of candidatePaths) {
+    if (fs.existsSync(staticDir) && fs.existsSync(path.join(staticDir, 'index.html'))) {
+      app.use(express.static(staticDir));
+      app.use((req, res, next) => {
+        if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/ws')) {
+          return res.sendFile(path.join(staticDir, 'index.html'));
+        }
+        next();
+      });
+      break;
+    }
+  }
 
   return app;
 }
