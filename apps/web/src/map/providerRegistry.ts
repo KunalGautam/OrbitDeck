@@ -114,9 +114,11 @@ export function getInitialMapProviderId(): MapProviderId {
       return urlProvider;
     }
 
-    const saved = localStorage.getItem(STORAGE_KEY) as MapProviderId | null;
-    if (saved && MAP_PROVIDERS[saved]) {
-      return saved;
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY) as MapProviderId | null;
+      if (saved && MAP_PROVIDERS[saved]) {
+        return saved;
+      }
     }
   }
 
@@ -131,7 +133,9 @@ export function getInitialMapProviderId(): MapProviderId {
 
 export function saveMapProviderPreference(providerId: MapProviderId): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, providerId);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, providerId);
+    }
 
     // Update query param in URL without full reload
     const url = new URL(window.location.href);
