@@ -49,3 +49,14 @@
 - **Consequences**:
   - Minimal protocol overhead compared to HTTP polling.
   - Shared simulation clock state across map, polar plot, and telemetry table.
+
+## ADR-006: Built-in node:sqlite for SQLite Engine on Node 22+
+
+- **Date**: 2026-09-28
+- **Status**: Accepted
+- **Context**: The database layer must support SQLite zero-config out of the box. Legacy native bindings (`better-sqlite3`) frequently fail to compile against newer V8/Node releases (Node 26+) due to V8 C++ API evolutions.
+- **Decision**: Use Node.js built-in `node:sqlite` (`DatabaseSync`) via a custom Kysely `NodeSqliteDialect`.
+- **Consequences**:
+  - True zero-configuration with zero native build steps or node-gyp dependencies.
+  - Full compatibility with Kysely's type-safe query building and migrations.
+  - Multi-engine flexibility preserved: PostgreSQL (`pg`) and MySQL (`mysql2`) remain selectable via `DB_DRIVER`.
