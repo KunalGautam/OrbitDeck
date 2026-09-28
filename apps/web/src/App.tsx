@@ -34,13 +34,13 @@ const MainLayout: React.FC = () => {
             {/* Left 7 Columns: 2D/3D Map & Satellite List */}
             <div className="lg:col-span-7 flex flex-col gap-2 min-h-0 lg:h-full">
               {/* Map */}
-              <div className="h-[280px] sm:h-[360px] lg:h-[58%] min-h-[180px] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden border border-space-700 shadow-xl">
+              <div className="h-[280px] sm:h-[360px] lg:h-auto lg:flex-[6] min-h-[180px] flex-shrink-0 flex flex-col rounded-lg overflow-hidden border border-space-700 shadow-xl">
                 <ErrorBoundary fallbackTitle="Map Engine Error">
                   <MapView />
                 </ErrorBoundary>
               </div>
               {/* Satellite Table */}
-              <div className="h-[260px] sm:h-[320px] lg:h-[42%] min-h-[160px] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
+              <div className="h-[260px] sm:h-[320px] lg:h-auto lg:flex-[4] min-h-[160px] flex-shrink-0 flex flex-col rounded-lg overflow-hidden shadow-xl">
                 <SatelliteTable />
               </div>
             </div>
@@ -48,11 +48,11 @@ const MainLayout: React.FC = () => {
             {/* Right 5 Columns: Polar Radar & Telemetry Detail */}
             <div className="lg:col-span-5 flex flex-col gap-2 min-h-0 lg:h-full">
               {/* Polar Plot */}
-              <div className="h-[250px] sm:h-[300px] lg:h-[45%] min-h-[160px] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
+              <div className="h-[250px] sm:h-[300px] lg:h-auto lg:flex-[4] min-h-[160px] flex-shrink-0 flex flex-col rounded-lg overflow-hidden shadow-xl">
                 <PolarSkyPlot />
               </div>
               {/* Telemetry Detail */}
-              <div className="min-h-[220px] lg:h-[55%] flex-1 lg:flex-initial rounded-lg overflow-hidden shadow-xl">
+              <div className="min-h-[220px] lg:h-auto lg:flex-[5] flex-1 flex flex-col rounded-lg overflow-hidden shadow-xl">
                 <SatelliteDetailPanel />
               </div>
             </div>

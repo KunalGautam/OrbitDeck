@@ -267,8 +267,10 @@ export const PolarSkyPlot: React.FC = () => {
     }
   }, [targetPass, selectedFrame, celestial, size]);
 
+  const isCompactHeight = size.height > 0 && size.height < 190;
+
   return (
-    <div className="w-full h-full bg-space-850 p-2 sm:p-3 flex flex-col min-h-0 overflow-hidden select-none">
+    <div className="w-full h-full bg-space-850 p-2 sm:p-2.5 flex flex-col min-h-0 overflow-hidden select-none">
       {/* Header Info */}
       <div className="w-full flex items-center justify-between text-[11px] sm:text-xs text-slate-300 border-b border-space-700 pb-1.5 flex-shrink-0">
         <div className="flex items-center space-x-1.5 truncate pr-2 min-w-0">
@@ -284,53 +286,83 @@ export const PolarSkyPlot: React.FC = () => {
         </div>
       </div>
 
-      {/* Canvas Radar Chart Container - Flexes responsively to width AND height */}
-      <div
-        ref={containerRef}
-        className="relative flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden my-1"
-      >
-        <canvas ref={canvasRef} className="block" />
+      {/* Canvas Radar Chart Container - Absolutely isolated so canvas never stretches container */}
+      <div ref={containerRef} className="relative flex-1 min-h-0 w-full overflow-hidden my-1">
+        <canvas ref={canvasRef} className="absolute inset-0 m-auto block" />
       </div>
 
-      {/* Target Pass Summary & Live Values - Stays fixed at bottom without overlapping */}
-      <div className="w-full bg-space-800/80 border border-space-700 rounded-lg p-1.5 sm:p-2 text-[10px] sm:text-xs grid grid-cols-2 sm:grid-cols-4 gap-1.5 flex-shrink-0">
-        <div className="min-w-0">
-          <span className="text-slate-400 block text-[9px] sm:text-[10px] truncate">
-            CURRENT AZ / EL
-          </span>
-          <span className="font-bold font-mono text-slate-100 text-[10px] sm:text-xs truncate block">
-            {selectedFrame?.azimuthDeg !== undefined
-              ? `${selectedFrame.azimuthDeg}° / ${selectedFrame.elevationDeg}°`
-              : 'N/A'}
-          </span>
+      {/* Target Pass Summary & Live Values - Adapts to height so it is never pushed out */}
+      {isCompactHeight ? (
+        <div className="w-full bg-space-800/90 border border-space-700/80 rounded px-2 py-1 text-[10px] font-mono flex items-center justify-between flex-shrink-0 text-slate-300">
+          <div className="min-w-0 truncate">
+            <span className="text-slate-400">AZ/EL: </span>
+            <span className="text-slate-100 font-bold">
+              {selectedFrame?.azimuthDeg !== undefined
+                ? `${selectedFrame.azimuthDeg}° / ${selectedFrame.elevationDeg}°`
+                : 'N/A'}
+            </span>
+          </div>
+          <div className="min-w-0 truncate">
+            <span className="text-slate-400">MAX: </span>
+            <span className="text-orbit-amber font-bold">
+              {targetPass ? `${targetPass.maxElevationDeg}°` : 'None'}
+            </span>
+          </div>
+          <div className="min-w-0 truncate hidden xs:block">
+            <span className="text-slate-400">AOS: </span>
+            <span className="text-orbit-green font-bold">
+              {targetPass
+                ? `${targetPass.aosAzimuthDeg}° @ ${new Date(targetPass.aosTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : 'N/A'}
+            </span>
+          </div>
+          <div className="min-w-0 truncate">
+            <span className="text-slate-400">VIS: </span>
+            <span className="text-orbit-cyan font-bold capitalize">
+              {targetPass?.visibility || 'N/A'}
+            </span>
+          </div>
         </div>
-        <div className="min-w-0">
-          <span className="text-slate-400 block text-[9px] sm:text-[10px] truncate">
-            MAX ELEVATION
-          </span>
-          <span className="font-bold font-mono text-orbit-amber text-[10px] sm:text-xs truncate block">
-            {targetPass ? `${targetPass.maxElevationDeg}°` : 'None in range'}
-          </span>
+      ) : (
+        <div className="w-full bg-space-800/80 border border-space-700 rounded-lg p-1.5 sm:p-2 text-[10px] sm:text-xs grid grid-cols-2 sm:grid-cols-4 gap-1.5 flex-shrink-0">
+          <div className="min-w-0">
+            <span className="text-slate-400 block text-[9px] sm:text-[10px] truncate">
+              CURRENT AZ / EL
+            </span>
+            <span className="font-bold font-mono text-slate-100 text-[10px] sm:text-xs truncate block">
+              {selectedFrame?.azimuthDeg !== undefined
+                ? `${selectedFrame.azimuthDeg}° / ${selectedFrame.elevationDeg}°`
+                : 'N/A'}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <span className="text-slate-400 block text-[9px] sm:text-[10px] truncate">
+              MAX ELEVATION
+            </span>
+            <span className="font-bold font-mono text-orbit-amber text-[10px] sm:text-xs truncate block">
+              {targetPass ? `${targetPass.maxElevationDeg}°` : 'None in range'}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <span className="text-slate-400 block text-[9px] sm:text-[10px] truncate">
+              AOS AZ / TIME
+            </span>
+            <span className="font-bold font-mono text-orbit-green text-[10px] sm:text-xs truncate block">
+              {targetPass
+                ? `${targetPass.aosAzimuthDeg}° @ ${new Date(targetPass.aosTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : 'N/A'}
+            </span>
+          </div>
+          <div className="min-w-0">
+            <span className="text-slate-400 block text-[9px] sm:text-[10px] truncate">
+              VISIBILITY
+            </span>
+            <span className="font-bold font-mono capitalize text-orbit-cyan text-[10px] sm:text-xs truncate block">
+              {targetPass?.visibility || 'N/A'}
+            </span>
+          </div>
         </div>
-        <div className="min-w-0">
-          <span className="text-slate-400 block text-[9px] sm:text-[10px] truncate">
-            AOS AZ / TIME
-          </span>
-          <span className="font-bold font-mono text-orbit-green text-[10px] sm:text-xs truncate block">
-            {targetPass
-              ? `${targetPass.aosAzimuthDeg}° @ ${new Date(targetPass.aosTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-              : 'N/A'}
-          </span>
-        </div>
-        <div className="min-w-0">
-          <span className="text-slate-400 block text-[9px] sm:text-[10px] truncate">
-            VISIBILITY
-          </span>
-          <span className="font-bold font-mono capitalize text-orbit-cyan text-[10px] sm:text-xs truncate block">
-            {targetPass?.visibility || 'N/A'}
-          </span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
