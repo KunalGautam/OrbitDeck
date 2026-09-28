@@ -28,19 +28,19 @@ const MainLayout: React.FC = () => {
       />
 
       {/* Main Workspace View */}
-      <main className="flex-1 overflow-y-auto lg:overflow-hidden p-1.5 sm:p-2">
+      <main className="flex-1 overflow-y-auto p-1.5 sm:p-2 min-h-0">
         {viewMode === 'dashboard' && (
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-2 min-h-full lg:h-full">
             {/* Left 7 Columns: 2D/3D Map & Satellite List */}
             <div className="lg:col-span-7 flex flex-col gap-2 min-h-0 lg:h-full">
               {/* Map */}
-              <div className="h-[320px] sm:h-[400px] lg:h-[60%] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden border border-space-700 shadow-xl">
+              <div className="h-[280px] sm:h-[360px] lg:h-[58%] min-h-[180px] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden border border-space-700 shadow-xl">
                 <ErrorBoundary fallbackTitle="Map Engine Error">
                   <MapView />
                 </ErrorBoundary>
               </div>
               {/* Satellite Table */}
-              <div className="h-[340px] sm:h-[380px] lg:h-[40%] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
+              <div className="h-[260px] sm:h-[320px] lg:h-[42%] min-h-[160px] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
                 <SatelliteTable />
               </div>
             </div>
@@ -48,11 +48,11 @@ const MainLayout: React.FC = () => {
             {/* Right 5 Columns: Polar Radar & Telemetry Detail */}
             <div className="lg:col-span-5 flex flex-col gap-2 min-h-0 lg:h-full">
               {/* Polar Plot */}
-              <div className="h-[320px] sm:h-[360px] lg:h-[45%] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
+              <div className="h-[250px] sm:h-[300px] lg:h-[45%] min-h-[160px] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
                 <PolarSkyPlot />
               </div>
               {/* Telemetry Detail */}
-              <div className="min-h-[380px] lg:h-[55%] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
+              <div className="min-h-[220px] lg:h-[55%] flex-1 lg:flex-initial rounded-lg overflow-hidden shadow-xl">
                 <SatelliteDetailPanel />
               </div>
             </div>
@@ -69,10 +69,10 @@ const MainLayout: React.FC = () => {
 
         {viewMode === 'polar' && (
           <div className="flex flex-col lg:grid lg:grid-cols-12 gap-2 min-h-full lg:h-full">
-            <div className="lg:col-span-7 h-[360px] sm:h-[450px] lg:h-full flex-shrink-0 lg:flex-shrink">
+            <div className="lg:col-span-7 h-[320px] sm:h-[420px] lg:h-full min-h-[200px] flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
               <PolarSkyPlot />
             </div>
-            <div className="lg:col-span-5 min-h-[400px] lg:h-full flex-shrink-0 lg:flex-shrink">
+            <div className="lg:col-span-5 min-h-[240px] lg:h-full flex-shrink-0 lg:flex-shrink rounded-lg overflow-hidden shadow-xl">
               <SatelliteDetailPanel />
             </div>
           </div>
