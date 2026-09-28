@@ -16,6 +16,7 @@ import {
 } from '@orbitdeck/shared';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { resolveTileUrl } from '../tileSources.js';
 
 export class LeafletAdapter implements IMapProvider {
   readonly id: MapProviderId = 'leaflet';
@@ -73,7 +74,7 @@ export class LeafletAdapter implements IMapProvider {
       options.tileSource.url.includes('tile.openstreetmap.org') ||
       options.tileSource.url.includes('/api/tiles/osm');
 
-    const tileUrl = options.tileSource?.url || '/api/tiles/osm/{z}/{x}/{y}.png';
+    const tileUrl = resolveTileUrl(options.tileSource?.url || '/api/tiles/osm/{z}/{x}/{y}.png');
 
     const attribution = isOsm
       ? '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'

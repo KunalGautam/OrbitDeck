@@ -1,6 +1,74 @@
 import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
+import https from 'https';
+import tls from 'tls';
+
+function fetchThroughProxy(
+  targetUrl: string,
+  proxyUrlStr: string,
+  headers: Record<string, string>,
+): Promise<{ statusCode: number; buffer: Buffer }> {
+  return new Promise((resolve, reject) => {
+    const target = new URL(targetUrl);
+    const proxy = new URL(proxyUrlStr);
+    const targetPort = target.port || (target.protocol === 'https:' ? '443' : '80');
+
+    const connectReq = http.request({
+      host: proxy.hostname,
+      port: proxy.port || 8080,
+      method: 'CONNECT',
+      path: `${target.hostname}:${targetPort}`,
+      headers: {
+        Host: `${target.hostname}:${targetPort}`,
+        ...(proxy.username && proxy.password
+          ? {
+              'Proxy-Authorization': `Basic ${Buffer.from(`${proxy.username}:${proxy.password}`).toString('base64')}`,
+            }
+          : {}),
+      },
+    });
+
+    connectReq.on('connect', (res, socket) => {
+      if (res.statusCode !== 200) {
+        return reject(new Error(`Proxy CONNECT returned ${res.statusCode}`));
+      }
+
+      const tlsSocket = tls.connect({
+        socket,
+        servername: target.hostname,
+      });
+
+      const getReq = https.request(
+        {
+          host: target.hostname,
+          port: targetPort,
+          path: target.pathname + target.search,
+          method: 'GET',
+          headers,
+          createConnection: () => tlsSocket,
+        },
+        (resp) => {
+          const chunks: Buffer[] = [];
+          resp.on('data', (c: Buffer) => chunks.push(c));
+          resp.on('end', () =>
+            resolve({
+              statusCode: resp.statusCode || 500,
+              buffer: Buffer.concat(chunks),
+            }),
+          );
+        },
+      );
+
+      getReq.on('error', reject);
+      getReq.end();
+    });
+
+    connectReq.on('error', reject);
+    connectReq.end();
+  });
+}
 
 export function createTileRouter(): Router {
   const router = Router();
@@ -43,22 +111,47 @@ export function createTileRouter(): Router {
       // If cache read fails, proceed to fetch
     }
 
-    // 2. Fetch from OSM with required User-Agent and Referer headers
+    // 2. Resolve upstream URL (supports custom OSM_TILE_URL or OSM_UPSTREAM_URL)
+    const upstreamTemplate =
+      process.env.OSM_TILE_URL ||
+      process.env.OSM_UPSTREAM_URL ||
+      'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+    const osmUrl = upstreamTemplate
+      .replace('{z}', String(zNum))
+      .replace('{x}', String(xNum))
+      .replace('{y}', String(yNum));
+
+    const headers: Record<string, string> = {
+      'User-Agent':
+        'OrbitDeck/1.0 (+https://github.com/KunalGautam/OrbitDeck; contact@orbitdeck.local)',
+      Referer: 'https://github.com/KunalGautam/OrbitDeck',
+    };
+
+    const proxyUrlStr =
+      process.env.HTTPS_PROXY ||
+      process.env.HTTP_PROXY ||
+      process.env.https_proxy ||
+      process.env.http_proxy;
+
     try {
-      const osmUrl = `https://tile.openstreetmap.org/${zNum}/${xNum}/${yNum}.png`;
-      const response = await fetch(osmUrl, {
-        headers: {
-          'User-Agent':
-            'OrbitDeck/1.0 (+https://github.com/KunalGautam/OrbitDeck; contact@orbitdeck.local)',
-          Referer: 'https://github.com/KunalGautam/OrbitDeck',
-        },
-      });
+      let buffer: Buffer;
 
-      if (!response.ok) {
-        return res.status(response.status).send('Tile fetch error');
+      if (proxyUrlStr && osmUrl.startsWith('https:')) {
+        // Fetch via outbound proxy
+        const result = await fetchThroughProxy(osmUrl, proxyUrlStr, headers);
+        if (result.statusCode < 200 || result.statusCode >= 300) {
+          return res.status(result.statusCode).send('Tile fetch error via proxy');
+        }
+        buffer = result.buffer;
+      } else {
+        // Direct fetch
+        const response = await fetch(osmUrl, { headers });
+        if (!response.ok) {
+          return res.status(response.status).send('Tile fetch error');
+        }
+        buffer = Buffer.from(await response.arrayBuffer());
       }
-
-      const buffer = Buffer.from(await response.arrayBuffer());
 
       // Save to local cache asynchronously
       try {

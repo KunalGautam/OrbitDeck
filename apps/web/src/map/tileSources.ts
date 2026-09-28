@@ -1,10 +1,21 @@
 import type { MapTileSource } from '@orbitdeck/shared';
 
+const defaultOsmUrl =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_OSM_TILE_URL) ||
+  '/api/tiles/osm/{z}/{x}/{y}.png';
+
+export function resolveTileUrl(url: string): string {
+  if (url.startsWith('/') && typeof window !== 'undefined' && window.location) {
+    return `${window.location.origin}${url}`;
+  }
+  return url;
+}
+
 export const DEFAULT_TILE_SOURCES: MapTileSource[] = [
   {
     id: 'osm-standard',
     name: 'OpenStreetMap Standard (Free)',
-    url: '/api/tiles/osm/{z}/{x}/{y}.png',
+    url: defaultOsmUrl,
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
     maxZoom: 19,

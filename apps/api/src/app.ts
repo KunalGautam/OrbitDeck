@@ -37,6 +37,9 @@ export interface AppDependencies {
 export function createApp(deps: AppDependencies): Express {
   const app = express();
 
+  // Trust upstream proxies (Cloudflare Tunnel, NGINX, reverse proxy)
+  app.set('trust proxy', true);
+
   app.use(
     helmet({
       contentSecurityPolicy: false,

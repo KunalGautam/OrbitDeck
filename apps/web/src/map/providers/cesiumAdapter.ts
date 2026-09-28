@@ -13,6 +13,7 @@ import {
 } from '@orbitdeck/shared';
 import * as Cesium from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
+import { resolveTileUrl } from '../tileSources.js';
 
 // Ensure Cesium static assets base URL is defined with trailing slash
 if (typeof window !== 'undefined' && !(window as any).CESIUM_BASE_URL) {
@@ -60,7 +61,7 @@ export class CesiumAdapter implements IMapProvider {
       options.tileSource.url.includes('/api/tiles/osm');
 
     let imageryProvider: Cesium.ImageryProvider;
-    const tileUrl = options.tileSource?.url || '/api/tiles/osm/{z}/{x}/{y}.png';
+    const tileUrl = resolveTileUrl(options.tileSource?.url || '/api/tiles/osm/{z}/{x}/{y}.png');
 
     if (tileUrl.includes('/api/tiles/osm') || tileUrl.includes('{z}')) {
       const hasSubdomains =
