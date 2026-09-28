@@ -59,4 +59,24 @@
 - **Consequences**:
   - True zero-configuration with zero native build steps or node-gyp dependencies.
   - Full compatibility with Kysely's type-safe query building and migrations.
-  - Multi-engine flexibility preserved: PostgreSQL (`pg`) and MySQL (`mysql2`) remain selectable via `DB_DRIVER`.
+  - Multi-engine flexibility preserved: PostgreSQL (`pg`) and MySQL (`mysql2`) remain selectable via `DB_ENGINE`.
+
+## ADR-007: Mission Control Multi-View Architecture and Shared State
+
+- **Date**: 2026-09-28
+- **Status**: Accepted
+- **Context**: The user interface must support simultaneous telemetry inspection (Gpredict style) including map tracking, polar sky radar plot, live kinematic readouts, searchable satellite catalogue, upcoming pass predictions, SatNOGS radio Doppler shifts, and QTH ground station management.
+- **Decision**: Centralize reactive real-time state in a typed React context (`OrbitDeckContext`) fed by WebSocket frames at 1 Hz. Support both a modular 4-pane Mission Control dashboard grid and full-screen dedicated views (`dashboard`, `map`, `polar`, `details`, `passes`, `radio`).
+- **Consequences**:
+  - Map camera, polar radar, and telemetry cards synchronize with sub-second latency.
+  - Simulation time manipulation (pause, 1x-300x speed, jumps) seamlessly controls all visualizations in unison.
+
+## ADR-008: Multi-Stage Production Docker Build and Multi-Engine Profiles
+
+- **Date**: 2026-09-28
+- **Status**: Accepted
+- **Context**: Production deployment should offer a minimal, hardened container running as a non-root user that serves both the API and pre-compiled static Web client, with Docker Compose profiles supporting SQLite, PostgreSQL, and MySQL.
+- **Decision**: Use multi-stage Docker build (`node:22-alpine` builder + runner) with non-root user `orbitdeck`, persistent `/app/data` volume for SQLite, and a fallback static file server embedded in Express for single-port (`3000`) operation. Docker Compose defines profiles for SQLite (default), PostgreSQL 16, and MySQL 8.0.
+- **Consequences**:
+  - Minimal image size (< 250 MB).
+  - Production readiness with built-in healthchecks and zero-configuration SQLite defaults.

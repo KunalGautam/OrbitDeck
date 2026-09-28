@@ -1,0 +1,117 @@
+services:
+  # ==============================================================================
+  # OrbitDeck Default Service (SQLite - Zero Configuration)
+  # ==============================================================================
+  orbitdeck:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: orbitdeck
+    restart: unless-stopped
+    ports:
+      - "3000:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - DB_ENGINE=sqlite
+      - DB_PATH=/app/data/orbitdeck.sqlite
+      - DB_RUN_MIGRATIONS=true
+      - TLE_AUTO_REFRESH=true
+      - TLE_CRON_SCHEDULE=0 0 * * *
+    volumes:
+      - orbitdeck_sqlite_data:/app/data
+
+  # ==============================================================================
+  # PostgreSQL Profile: docker compose --profile postgres up
+  # ==============================================================================
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16-alpine
+    container_name: orbitdeck-postgres-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: orbitdeck
+      POSTGRES_USER: orbitdeck
+      POSTGRES_PASSWORD: orbitdeck_secret
+    volumes:
+      - orbitdeck_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbitdeck -d orbitdeck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  orbitdeck-postgres:
+    profiles: ["postgres"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: orbitdeck-postgres-app
+    restart: unless-stopped
+    ports:
+      - "3000:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - DB_ENGINE=postgres
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=orbitdeck
+      - DB_USER=orbitdeck
+      - DB_PASSWORD=orbitdeck_secret
+      - DB_RUN_MIGRATIONS=true
+
+  # ==============================================================================
+  # MySQL Profile: docker compose --profile mysql up
+  # ==============================================================================
+  mysql:
+    profiles: ["mysql"]
+    image: mysql:8.0
+    container_name: orbitdeck-mysql-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: orbitdeck
+      MYSQL_USER: orbitdeck
+      MYSQL_PASSWORD: orbitdeck_secret
+      MYSQL_ROOT_PASSWORD: root_secret
+    volumes:
+      - orbitdeck_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "orbitdeck", "-porbitdeck_secret"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  orbitdeck-mysql:
+    profiles: ["mysql"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: orbitdeck-mysql-app
+    restart: unless-stopped
+    ports:
+      - "3000:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - DB_ENGINE=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=orbitdeck
+      - DB_USER=orbitdeck
+      - DB_PASSWORD=orbitdeck_secret
+      - DB_RUN_MIGRATIONS=true
+
+volumes:
+  orbitdeck_sqlite_data:
+  orbitdeck_postgres_data:
+  orbitdeck_mysql_data:
